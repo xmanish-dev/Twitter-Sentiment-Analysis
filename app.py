@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from preprocess import clean_text
+from sentiment import predict_sentiment
 
 # ---------------- Page Configuration ----------------
 st.set_page_config(
@@ -46,13 +48,45 @@ def load_data():
 
     return df
 
+
+def find_text_column(uploaded_df):
+    for column in ["Tweet", "tweet", "text", "Text", "content", "body"]:
+        if column in uploaded_df.columns:
+            return column
+
+    return None
+
+
+def normalize_xquik_export(uploaded_df):
+    text_column = find_text_column(uploaded_df)
+
+    if text_column is None:
+        return None
+
+    source = uploaded_df.copy()
+    tweets = source[text_column].astype(str)
+
+    entity = (
+        source["Entity"]
+        if "Entity" in source.columns
+        else source.get("author", "Xquik export")
+    )
+
+    return pd.DataFrame(
+        {
+            "Tweet_ID": source.get("Tweet_ID", source.index + 1),
+            "Entity": entity,
+            "Sentiment": tweets.apply(lambda tweet: predict_sentiment(clean_text(tweet))),
+            "Tweet": tweets,
+        }
+    )
+
+
 df = load_data()
 
 st.success(f"Dataset Loaded Successfully! ({len(df)} Tweets)")
 
 # ---------------- Sidebar ----------------
-st.sidebar.header("Search")
-
 st.sidebar.header("Search")
 
 search_type = st.sidebar.selectbox(
@@ -61,6 +95,21 @@ search_type = st.sidebar.selectbox(
 )
 
 keyword = st.sidebar.text_input("Enter Search")
+xquik_file = st.sidebar.file_uploader(
+    "Upload Xquik CSV export",
+    type=["csv"],
+    help="Use a CSV with Tweet, text, content, or body columns.",
+)
+
+if xquik_file is not None:
+    uploaded_df = pd.read_csv(xquik_file)
+    normalized_df = normalize_xquik_export(uploaded_df)
+
+    if normalized_df is None:
+        st.sidebar.error("CSV needs a Tweet, text, content, or body column.")
+    else:
+        df = normalized_df.dropna()
+        st.sidebar.success(f"Loaded {len(df)} Xquik rows")
 
 if keyword:
 
@@ -162,9 +211,6 @@ st.dataframe(
     height=500
 )
 
-from preprocess import clean_text
-from sentiment import predict_sentiment
-
 st.divider()
 
 st.header("🤖 Live Sentiment Prediction")
@@ -192,18 +238,21 @@ st.header("☁️ Word Cloud")
 
 text = " ".join(filtered_df["Tweet"].astype(str))
 
-wordcloud = WordCloud(
-    width=1000,
-    height=500,
-    background_color="white"
-).generate(text)
+if text.strip():
+    wordcloud = WordCloud(
+        width=1000,
+        height=500,
+        background_color="white"
+    ).generate(text)
 
-fig, ax = plt.subplots(figsize=(12,6))
+    fig, ax = plt.subplots(figsize=(12,6))
 
-ax.imshow(wordcloud, interpolation="bilinear")
-ax.axis("off")
+    ax.imshow(wordcloud, interpolation="bilinear")
+    ax.axis("off")
 
-st.pyplot(fig)
+    st.pyplot(fig)
+else:
+    st.info("No tweet text is available for the current filters.")
 
 st.divider()
 

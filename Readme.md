@@ -11,6 +11,7 @@ A web-based dashboard for analyzing Twitter sentiment using Python and NLP.
 - ☁️ Word cloud
 - 🤖 Live sentiment prediction
 - 📥 Download filtered results
+- 📄 Upload Xquik CSV exports for the same dashboard views
 
 ## Technologies
 
@@ -44,6 +45,13 @@ cd Twitter-Sentiment-Analysis
 pip install -r requirements.txt
 python -m streamlit run app.py
 ```
+
+## Xquik CSV Workflow
+
+Export X post search or monitor results from Xquik as CSV, then upload the file
+from the sidebar. The importer accepts `Tweet`, `text`, `content`, or `body`
+columns, runs the existing VADER sentiment classifier, and keeps the same
+filters, charts, word cloud, and download button.
 
 ## Author
 
